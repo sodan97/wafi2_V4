@@ -1,0 +1,45 @@
+{
+  "hosting": {
+    "public": "dist", 
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+    ,
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "run": {
+          "serviceId": "wafi-backend"
+        }
+      },
+      {
+        "source": "**",
+        "destination": "/maintenance.html"
+      }
+    ],
+    "headers": [
+       {
+          "source": "**",
+          "headers": [
+             {
+                "key": "Cache-Control",
+                "value": "public, max-age=0, must-revalidate"
+             }
+          ]
+       }
+    ]
+  },
+  "apphosting": {
+    "backendId": "wafi-backend",
+    "rootDir": "backend",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "functions"
+    ]
+  }
+}
