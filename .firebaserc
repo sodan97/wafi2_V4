@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "wafi-projet"
-  }
+    "default": "wafi-projet",
+    "dev": "projet-wafi-dev"
+  },
+  "targets": {},
+  "etags": {}
 }
