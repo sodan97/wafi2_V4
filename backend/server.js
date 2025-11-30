@@ -1,17 +1,12 @@
-
-import 'dotenv/config';
 import express from 'express';
-import helmet from 'helmet';
 import cors from 'cors';
+import dotenv from 'dotenv';
 import admin from 'firebase-admin';
-
-// Import routes
+import serviceAccount from './serviceAccountKey.json' assert { type: 'json' };
 import userRoutes from './routes/userRoutes.js';
 import productRoutes from './routes/productRoutes.js';
-import orderRoutes from './routes/orderRoutes.js';
 
-// Import Firebase service account key
-import serviceAccount from './serviceAccountKey.json' assert { type: 'json' };
+dotenv.config();
 
 // --- Firebase Initialization ---
 try {
@@ -20,32 +15,31 @@ try {
   });
   console.log('✅ Firebase Admin SDK initialized successfully.');
 } catch (error) {
-  console.error('❌ Firebase Admin SDK initialization failed:', error);
-  process.exit(1);
+  if (error.code === 'app/duplicate-app') {
+    admin.app(); 
+  } else {
+    console.error('❌ Firebase Admin SDK initialization failed:', error);
+    process.exit(1);
+  }
 }
 
 const db = admin.firestore();
 const app = express();
-const PORT = process.env.PORT || 5002;
 
 // --- Middleware ---
-app.use(helmet());
 app.use(cors());
 app.use(express.json());
-
-// Middleware to attach the db instance to each request
 app.use((req, res, next) => {
   req.db = db;
   next();
 });
 
 // --- API Routes ---
-app.use('/api/users', userRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/orders', orderRoutes);
+app.use('/users', userRoutes);
+app.use('/products', productRoutes); 
 
-// --- Server Startup ---
+// --- Server Initialization ---
+const PORT = process.env.PORT || 5002;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log('Firestore is now the primary database.');
+  console.log(`✅ Server is running on port ${PORT}`);
 });

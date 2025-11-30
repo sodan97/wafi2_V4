@@ -60,33 +60,33 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [fetchProducts]);
 
   const addProduct = useCallback(async (newProduct: Omit<Product, 'id'>) => {
-    // ... (implementation unchanged)
+    // ... (implementation to be added)
     return null;
   }, []);
 
   const updateProduct = useCallback(async (productId: number, productData: Partial<Product>) => {
-    // ... (implementation unchanged)
+    // ... (implementation to be added)
     return null;
   }, []);
 
   const updateProductStock = useCallback(async (productId: number, newStock: number) => {
-    // ... (implementation unchanged)
+    // ... (implementation to be added)
   }, [products]);
 
   const deleteProduct = useCallback(async (productId: number) => {
-    // ... (implementation unchanged)
+    // ... (implementation to be added)
   }, [products]);
 
   const updateProductStatus = useCallback(async (productId: number, status: 'active' | 'archived') => {
-    // ... (implementation unchanged)
+    // ... (implementation to be added)
   }, [products]);
 
   const restoreProduct = useCallback(async (productId: number) => {
-    // ... (implementation unchanged)
+    // ... (implementation to be added)
   }, [products]);
 
   const permanentlyDeleteProduct = useCallback(async (productId: number) => {
-    // ... (implementation unchanged)
+    // ... (implementation to be added)
   }, [products]);
 
   return (
