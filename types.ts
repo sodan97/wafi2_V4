@@ -1,6 +1,6 @@
 
 export interface Product {
-  id: number;
+  id: string;
   name: string;
   price: number;
   imageUrls: string[];
@@ -15,7 +15,7 @@ export interface CartItem extends Product {
 }
 
 export interface User {
-  id: number;
+  id: string;
   email: string;
   password: string; // NOTE: In a real app, this should be a securely stored hash
   firstName: string;
@@ -48,18 +48,18 @@ export interface LoginResponse {
 }
 
 export interface Reservation {
-  productId: number;
-  userId: number;
+  productId: string;
+  userId: string;
   date: string;
 }
 
 export interface Notification {
-  id: number;
-  userId: number;
+  id: string;
+  userId: string;
   message: string;
   read: boolean;
   date: string;
-  productId: number;
+  productId: string;
 }
 
 export interface ApiError {

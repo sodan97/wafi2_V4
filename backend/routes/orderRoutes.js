@@ -1,101 +1,113 @@
+
 import express from 'express';
+import { body, param, validationResult } from 'express-validator';
+
 const router = express.Router();
-import Order from '../models/Order.js'; // Assuming your Order model is in ../models/Order
-// If using auth middleware, uncomment these imports:
-// import { protect } from '../middleware/authMiddleware.js';
-// import { admin } from '../middleware/authMiddleware.js';
 
-// @desc    Add a new order
-// @route   POST /api/orders
-// @access  Public (or Private if users must be logged in to order)
-router.post('/', /* protect, */ async (req, res) => {
-  const { customer, items, total, userId } = req.body;
-
-  // Basic validation
-  if (!customer || !items || items.length === 0 || total === undefined) {
-    return res.status(400).json({ message: 'Invalid order data' });
+// POST /api/orders - Add a new order
+router.post('/', [
+  body('customer').isObject(),
+  body('items').isArray({ min: 1 }),
+  body('total').isFloat({ gt: 0 }),
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
   }
 
   try {
-    const newOrder = new Order({
+    const { customer, items, total, userId } = req.body;
+    const newOrder = {
       customer,
       items,
       total,
-      userId: userId ? userId.toString() : null, // Convert to string for consistency
-      // status will default to 'Pas commencé'
-    });
+      userId: userId || null,
+      status: 'Pas commencé', // Default status
+      createdAt: new Date().toISOString(),
+    };
 
-    const createdOrder = await newOrder.save();
-    res.status(201).json(createdOrder);
+    const docRef = await req.db.collection('orders').add(newOrder);
+    res.status(201).json({ id: docRef.id, ...newOrder });
+
   } catch (error) {
-    console.error(error);
+    console.error('Error creating order:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 });
 
-// @desc    Get all orders (for admin)
-// @route   GET /api/orders
-// @access  Private/Admin (implement admin middleware if needed)
-router.get('/', /* protect, admin, */ async (req, res) => {
+// GET /api/orders - Get all orders (for admin)
+router.get('/', async (req, res) => {
   try {
-    const orders = await Order.find({});
+    const ordersRef = req.db.collection('orders');
+    const snapshot = await ordersRef.orderBy('createdAt', 'desc').get();
+
+    if (snapshot.empty) {
+      return res.status(200).json([]);
+    }
+
+    const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     res.json(orders);
+
   } catch (error) {
-    console.error(error);
+    console.error('Error fetching orders:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 });
 
-// @desc    Get orders for a specific user
-// @route   GET /api/orders/myorders
-// @access  Private (implement protect middleware if needed)
-router.get('/myorders', /* protect, */ async (req, res) => {
-    try {
-        // This assumes userId is passed in the query parameters, adjust if using auth middleware
-         const userId = req.query.userId;
-         if (!userId) {
-             return res.status(400).json({ message: 'User ID is required' });
-         }
-        const orders = await Order.find({ userId: userId.toString() });
-        res.json(orders);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server Error' });
+// GET /api/orders/myorders - Get orders for a specific user
+router.get('/myorders', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
     }
+
+    const ordersRef = req.db.collection('orders');
+    const snapshot = await ordersRef.where('userId', '==', userId).orderBy('createdAt', 'desc').get();
+
+    if (snapshot.empty) {
+      return res.status(200).json([]);
+    }
+
+    const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json(orders);
+
+  } catch (error) {
+    console.error('Error fetching user orders:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
 });
 
+// PUT /api/orders/:id/status - Update order status (for admin)
+router.put('/:id/status', [
+  param('id').isString().notEmpty(),
+  body('status').isString().notEmpty(),
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
 
-// @desc    Update order status (for admin)
-// @route   PUT /api/orders/:id/status
-// @access  Private/Admin
-router.put('/:id/status', /* protect, admin, */ async (req, res) => {
-    const orderId = req.params.id;
-    const { status, handledBy, handledByName } = req.body;
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
 
-    if (!status) {
-        return res.status(400).json({ message: 'Status is required' });
+    const docRef = req.db.collection('orders').doc(id);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ message: 'Order not found' });
     }
 
-    try {
-        const order = await Order.findById(orderId);
+    await docRef.update({ status });
 
-        if (order) {
-            order.status = status;
-            if (handledBy) {
-                order.handledBy = handledBy;
-            }
-            if (handledByName) {
-                order.handledByName = handledByName;
-            }
-            const updatedOrder = await order.save();
-            res.json(updatedOrder);
-        } else {
-            res.status(404).json({ message: 'Order not found' });
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server Error' });
-    }
+    const updatedDoc = await docRef.get();
+    res.json({ id: updatedDoc.id, ...updatedDoc.data() });
+
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
 });
 
 export default router;

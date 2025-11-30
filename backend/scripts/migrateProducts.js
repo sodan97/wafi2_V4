@@ -1,46 +1,67 @@
 
 import admin from 'firebase-admin';
+import mongoose from 'mongoose';
 import serviceAccount from '../serviceAccountKey.json' assert { type: 'json' };
+import Product from '../models/Product.js'; // Import the Mongoose Product model
 
-// Initialize the Firebase Admin SDK with the explicit Project ID
+// --- MongoDB Configuration ---
+const MONGO_URI = 'mongodb://localhost:27017/belleza'; // Assurez-vous que cette URI est correcte
+
+// --- Firebase Initialization ---
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  projectId: 'projet-wafi-dev',
+  credential: admin.credential.cert(serviceAccount)
 });
-
 const db = admin.firestore();
 const productsCollection = db.collection('products');
 
+/**
+ * This script migrates products from a MongoDB database to Firestore.
+ * 1. Connects to MongoDB.
+ * 2. Fetches all products using the Mongoose model.
+ * 3. Adds each product to the Firestore 'products' collection.
+ */
 const migrateProducts = async () => {
-  // Dynamically import the products data
-  const { PRODUCTS } = await import('../constants/products.js');
-
-  console.log('Starting product migration...');
-
-  if (!PRODUCTS || PRODUCTS.length === 0) {
-    console.error('No products found in PRODUCTS constant. Aborting.');
-    return;
-  }
-
-  // Use a batch write for efficiency
-  const batch = db.batch();
-
-  for (const product of PRODUCTS) {
-    // Use the product's existing 'id' as the document ID in Firestore
-    const docRef = productsCollection.doc(String(product.id));
-    batch.set(docRef, product);
-  }
-
   try {
-    await batch.commit();
-    console.log(`✅ Successfully migrated ${PRODUCTS.length} products to Firestore.`);
-  } catch (error) {
-    console.error('❌ Error committing batch migration:', error);
-  }
+    // 1. Connect to MongoDB
+    await mongoose.connect(MONGO_URI);
+    console.log('Successfully connected to MongoDB.');
 
-  console.log('Product migration finished.');
+    // 2. Fetch all products from MongoDB
+    const allProducts = await Product.find({});
+    console.log(`Found ${allProducts.length} products in MongoDB.`);
+
+    if (allProducts.length === 0) {
+      console.log('No products to migrate.');
+      return;
+    }
+
+    // 3. Write products to Firestore
+    console.log('Starting migration to Firestore...');
+    for (const product of allProducts) {
+      // Mongoose adds _id and __v, we create a clean object
+      const productData = {
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        category: product.category,
+        stock: product.stock,
+        imageUrl: product.imageUrl,
+        createdAt: product.createdAt,
+        updatedAt: product.updatedAt
+      };
+      await productsCollection.add(productData);
+      console.log(`Migrated product: ${product.name}`);
+    }
+
+    console.log('✅ Migration completed successfully!');
+
+  } catch (error) {
+    console.error('Migration failed:', error);
+  } finally {
+    // 4. Disconnect from MongoDB
+    await mongoose.disconnect();
+    console.log('Disconnected from MongoDB.');
+  }
 };
 
-migrateProducts().catch(error => {
-  console.error("Migration script failed:", error);
-});
+migrateProducts();

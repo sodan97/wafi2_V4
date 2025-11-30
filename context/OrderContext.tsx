@@ -36,15 +36,14 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       let url = `${API_BASE_URL}/orders`;
 
-      if (currentUser?.role === 'admin') {
-        url = `${API_BASE_URL}/orders`;
-      } else if (currentUser) {
-        url = `${API_BASE_URL}/orders/myorders?userId=${currentUser.id}`;
+      if (currentUser?.role !== 'admin') {
+        url = `${API_BASE_URL}/orders/myorders`;
       }
 
       const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
         },
       });
 
@@ -71,6 +70,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
         },
         body: JSON.stringify(orderData),
       });
@@ -94,7 +94,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const updateOrderStatus = async (orderId: string, newStatus: string, handledByName?: string) => {
     const originalOrders = orders;
     const updatedOrders = orders.map(order =>
-      order._id === orderId ? { ...order, status: newStatus } : order
+      order.id === orderId ? { ...order, status: newStatus } : order
     );
     setOrders(updatedOrders);
     setError(null);
@@ -105,6 +105,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
         },
         body: JSON.stringify({
           status: newStatus,
@@ -120,7 +121,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const updatedOrderFromServer = await response.json();
       setOrders(prevOrders =>
         prevOrders.map(order =>
-          order._id === orderId ? updatedOrderFromServer : order
+          order.id === orderId ? updatedOrderFromServer : order
         )
       );
     } catch (err: any) {
@@ -131,7 +132,26 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const deleteOrder = async (orderId: string) => {
-    console.log(`Deleting order ${orderId}`);
+    const originalOrders = orders;
+    setOrders(orders.filter(order => order.id !== orderId));
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+    } catch (err: any) {
+      setOrders(originalOrders);
+      setError(err.message || 'Failed to delete order');
+      console.error("Error deleting order:", err);
+    }
   };
 
   return (

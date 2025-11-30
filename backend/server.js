@@ -1,107 +1,51 @@
+
 import 'dotenv/config';
 import express from 'express';
-import mongoose from 'mongoose';
 import helmet from 'helmet';
 import cors from 'cors';
+import admin from 'firebase-admin';
+
+// Import routes
 import userRoutes from './routes/userRoutes.js';
 import productRoutes from './routes/productRoutes.js';
-import reservationRoutes from './routes/reservationRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
-import notificationRoutes from './routes/notificationRoutes.js';
-import favoriteRoutes from './routes/favoriteRoutes.js';
-import { initializeDatabase } from './utils/initializeDatabase.js';
 
+// Import Firebase service account key
+import serviceAccount from './serviceAccountKey.json' assert { type: 'json' };
+
+// --- Firebase Initialization ---
+try {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+  console.log('✅ Firebase Admin SDK initialized successfully.');
+} catch (error) {
+  console.error('❌ Firebase Admin SDK initialization failed:', error);
+  process.exit(1);
+}
+
+const db = admin.firestore();
 const app = express();
 const PORT = process.env.PORT || 5002;
-const MONGODB_URI = process.env.MONGODB_URI;
 
-console.log('🔍 Environment check:');
-console.log('MONGODB_URI exists:', !!process.env.MONGODB_URI);
-console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
-console.log('EMAIL_HOST exists:', !!process.env.EMAIL_HOST);
+// --- Middleware ---
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
 
-// Configuration des options de connexion MongoDB
-const mongoOptions = {
-  serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 45000,
-  connectTimeoutMS: 10000,
-};
+// Middleware to attach the db instance to each request
+app.use((req, res, next) => {
+  req.db = db;
+  next();
+});
 
-// Fonction pour se connecter à MongoDB
-async function connectToMongoDB() {
-  try {
-    console.log('🚀 Démarrage de la connexion MongoDB...');
-    await mongoose.connect(MONGODB_URI, mongoOptions);
-    console.log('✅ MongoDB connected successfully!');
-    return true;
-  } catch (error) {
-    console.error('❌ Erreur de connexion MongoDB:', error.message);
-    throw error;
-  }
-}
+// --- API Routes ---
+app.use('/api/users', userRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
 
-// Démarrage du serveur
-async function startServer() {
-  try {
-    // Connexion à MongoDB
-    await connectToMongoDB();
-
-    // Initialiser la base de données
-    await initializeDatabase();
-
-    // Configuration Express
-    app.use(helmet());
-    app.use(cors());
-    app.use(express.json());
-
-    // Routes API - Ajout progressif pour identifier le problème
-    console.log('📝 Adding user routes...');
-    app.use('/api/users', userRoutes);
-
-    console.log('📝 Adding product routes...');
-    app.use('/api/products', productRoutes);
-
-    console.log('📝 Adding reservation routes...');
-    app.use('/api/reservations', reservationRoutes);
-
-    console.log('📝 Adding order routes...');
-    app.use('/api/orders', orderRoutes);
-
-    console.log('📝 Adding notification routes...');
-    app.use('/api/notifications', notificationRoutes);
-
-    console.log('📝 Adding favorite routes...');
-    app.use('/api/favorites', favoriteRoutes);
-    
-    // Route de test simple
-    app.get('/', (req, res) => {
-      res.json({ 
-        message: 'Backend is running with all routes including notifications!', 
-        mongodb: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
-        timestamp: new Date().toISOString(),
-        features: {
-          emailService: !!process.env.EMAIL_HOST,
-          notifications: true,
-          welcomeEmails: true,
-          stockNotifications: true
-        }
-      });
-    });
-    
-    // Démarrage du serveur HTTP
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`📧 Email service: ${process.env.EMAIL_HOST ? 'Configured ✅' : 'Not configured ❌'}`);
-      console.log(`🎉 All routes active including notifications!`);
-      console.log(`🧪 Test: curl http://localhost:${PORT}/`);
-    });
-    
-  } catch (error) {
-    console.error('❌ Impossible de démarrer le serveur:', error.message);
-    console.error('Stack trace:', error.stack);
-    process.exit(1);
-  }
-}
-
-// Démarrer le serveur
-startServer();
+// --- Server Startup ---
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log('Firestore is now the primary database.');
+});
