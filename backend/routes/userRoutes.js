@@ -10,10 +10,10 @@ const router = express.Router();
 router.post(
   '/register',
   [
-    body('email').isEmail().withMessage('Invalid email format'),
-    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
-    body('firstName').notEmpty().withMessage('First name is required'),
-    body('lastName').notEmpty().withMessage('Last name is required'),
+    body('email').isEmail().withMessage('Format d\'email invalide'),
+    body('password').isLength({ min: 8 }).withMessage('Le mot de passe doit contenir au moins 8 caractères').matches(/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Le mot de passe doit contenir au moins une minuscule, une majuscule et un chiffre'),
+    body('firstName').notEmpty().withMessage('Le prénom est requis'),
+    body('lastName').notEmpty().withMessage('Le nom est requis'),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -30,7 +30,7 @@ router.post(
       const snapshot = await usersRef.where('email', '==', email).get();
 
       if (!snapshot.empty) {
-        return res.status(400).json({ message: 'User with this email already exists' });
+        return res.status(400).json({ message: 'Un utilisateur avec cet email existe déjà' });
       }
 
       // Hash the password
@@ -58,7 +58,7 @@ router.post(
 
     } catch (err) {
       console.error('Registration error:', err);
-      res.status(500).json({ message: 'Server error' });
+      res.status(500).json({ message: 'Erreur du serveur' });
     }
   }
 );
@@ -67,8 +67,8 @@ router.post(
 router.post(
   '/login',
   [
-    body('email').isEmail().withMessage('Invalid email format'),
-    body('password').notEmpty().withMessage('Password is required'),
+    body('email').isEmail().withMessage("Format d'email invalide"),
+    body('password').notEmpty().withMessage('Le mot de passe est requis'),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -84,7 +84,7 @@ router.post(
       const snapshot = await usersRef.where('email', '==', email).get();
 
       if (snapshot.empty) {
-        return res.status(400).json({ message: 'Invalid credentials' });
+        return res.status(400).json({ message: 'Identifiants invalides' });
       }
 
       const userDoc = snapshot.docs[0];
@@ -92,7 +92,7 @@ router.post(
 
       const isMatch = await bcrypt.compare(password, userData.password);
       if (!isMatch) {
-        return res.status(400).json({ message: 'Invalid credentials' });
+        return res.status(400).json({ message: 'Identifiants invalides' });
       }
 
       // Create JWT payload with the user's role
@@ -114,7 +114,7 @@ router.post(
 
     } catch (err) {
       console.error('Login error:', err);
-      res.status(500).json({ message: 'Server error' });
+      res.status(500).json({ message: 'Erreur du serveur' });
     }
   }
 );
