@@ -1,12 +1,12 @@
+import dotenv from 'dotenv';
+dotenv.config(); // Load environment variables first
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import admin from 'firebase-admin';
 import serviceAccount from './serviceAccountKey.json' assert { type: 'json' };
 import userRoutes from './routes/userRoutes.js';
 import productRoutes from './routes/productRoutes.js';
-
-dotenv.config();
 
 // --- Firebase Initialization ---
 try {
@@ -27,7 +27,14 @@ const db = admin.firestore();
 const app = express();
 
 // --- Middleware ---
-app.use(cors());
+const corsOptions = {
+  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+app.use(cors(corsOptions));
+
 app.use(express.json());
 app.use((req, res, next) => {
   req.db = db;
