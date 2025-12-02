@@ -27,13 +27,9 @@ const db = admin.firestore();
 const app = express();
 
 // --- Middleware ---
-const corsOptions = {
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-};
-app.use(cors(corsOptions));
+
+// Temporarily allow all origins for debugging CORS issues
+app.use(cors());
 
 app.use(express.json());
 app.use((req, res, next) => {
@@ -42,8 +38,8 @@ app.use((req, res, next) => {
 });
 
 // --- API Routes ---
-app.use('/users', userRoutes);
-app.use('/products', productRoutes); 
+app.use('/api/users', userRoutes);
+app.use('/api/products', productRoutes); 
 
 // --- Server Initialization ---
 const PORT = process.env.PORT || 5002;
