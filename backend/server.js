@@ -28,8 +28,25 @@ const app = express();
 
 // --- Middleware ---
 
-// Temporarily allow all origins for debugging CORS issues
-app.use(cors());
+const allowedOrigins = [
+  'https://9000-firebase-waafi23-1764438515401.cluster-cbeiita7rbe7iuwhvjs5zww2i4.cloudworkstations.dev'
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  allowedHeaders: 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Enable pre-flight requests for all routes
 
 app.use(express.json());
 app.use((req, res, next) => {
