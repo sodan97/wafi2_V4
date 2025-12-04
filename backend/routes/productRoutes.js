@@ -1,10 +1,9 @@
-
 import express from 'express';
 
 const router = express.Router();
 
 // GET /api/products
-router.get('/', async (req, res) => {
+router.get('', async (req, res) => {
   const db = req.db;
   try {
     const productsSnapshot = await db.collection('products').get();
